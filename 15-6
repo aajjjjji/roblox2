@@ -1,0 +1,351 @@
+-- R15强制转R6脚本 v1.0
+-- 适用于大多数Roblox游戏
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+getgenv().R15toR6 = {
+    Enabled = true,
+    AutoConvert = true,
+    Version = "1.0"
+}
+
+-- 等待角色加载
+local function waitForCharacter(player)
+    local character = player.Character
+    if not character then
+        character = player.CharacterAdded:Wait()
+    end
+    return character
+end
+
+-- R6身体部位配置
+local R6_PARTS = {
+    Head = {
+        Size = Vector3.new(2, 1, 1),
+        MeshId = "rbxasset://fonts/head.mesh",
+        Offset = CFrame.new(0, 1.5, 0)
+    },
+    Torso = {
+        Size = Vector3.new(2, 2, 1),
+        Offset = CFrame.new(0, 0, 0)
+    },
+    ["Left Arm"] = {
+        Size = Vector3.new(1, 2, 1),
+        Offset = CFrame.new(-1.5, 0, 0)
+    },
+    ["Right Arm"] = {
+        Size = Vector3.new(1, 2, 1),
+        Offset = CFrame.new(1.5, 0, 0)
+    },
+    ["Left Leg"] = {
+        Size = Vector3.new(1, 2, 1),
+        Offset = CFrame.new(-0.5, -2, 0)
+    },
+    ["Right Leg"] = {
+        Size = Vector3.new(1, 2, 1),
+        Offset = CFrame.new(0.5, -2, 0)
+    }
+}
+
+-- R6关节配置
+local R6_JOINTS = {
+    Neck = {
+        Part0 = "Torso",
+        Part1 = "Head",
+        C0 = CFrame.new(0, 1, 0, -1, 0, 0, 0, 0, 1, 0, 1, 0),
+        C1 = CFrame.new(0, -0.5, 0, -1, 0, 0, 0, 0, 1, 0, 1, 0)
+    },
+    ["Left Shoulder"] = {
+        Part0 = "Torso",
+        Part1 = "Left Arm",
+        C0 = CFrame.new(-1, 0.5, 0, 0, 0, -1, 0, 1, 0, 1, 0, 0),
+        C1 = CFrame.new(0.5, 0.5, 0, 0, 0, -1, 0, 1, 0, 1, 0, 0)
+    },
+    ["Right Shoulder"] = {
+        Part0 = "Torso",
+        Part1 = "Right Arm",
+        C0 = CFrame.new(1, 0.5, 0, 0, 0, 1, 0, 1, 0, -1, 0, 0),
+        C1 = CFrame.new(-0.5, 0.5, 0, 0, 0, 1, 0, 1, 0, -1, 0, 0)
+    },
+    ["Left Hip"] = {
+        Part0 = "Torso",
+        Part1 = "Left Leg",
+        C0 = CFrame.new(-1, -1, 0, 0, 0, -1, 0, 1, 0, 1, 0, 0),
+        C1 = CFrame.new(0.5, 1, 0, 0, 0, -1, 0, 1, 0, 1, 0, 0)
+    },
+    ["Right Hip"] = {
+        Part0 = "Torso",
+        Part1 = "Right Leg",
+        C0 = CFrame.new(1, -1, 0, 0, 0, 1, 0, 1, 0, -1, 0, 0),
+        C1 = CFrame.new(-0.5, 1, 0, 0, 0, 1, 0, 1, 0, -1, 0, 0)
+    }
+}
+
+-- 移除R15部件
+local function removeR15Parts(character)
+    local r15Parts = {
+        "UpperTorso", "LowerTorso", 
+        "LeftUpperArm", "LeftLowerArm", "LeftHand",
+        "RightUpperArm", "RightLowerArm", "RightHand",
+        "LeftUpperLeg", "LeftLowerLeg", "LeftFoot",
+        "RightUpperLeg", "RightLowerLeg", "RightFoot"
+    }
+    
+    for _, partName in pairs(r15Parts) do
+        local part = character:FindFirstChild(partName)
+        if part then
+            part:Destroy()
+        end
+    end
+    
+    -- 移除R15特定的关节
+    local r15Joints = {
+        "LeftShoulder", "RightShoulder", "LeftHip", "RightHip",
+        "Waist", "Neck", "LeftElbow", "RightElbow", "LeftKnee", "RightKnee"
+    }
+    
+    for _, jointName in pairs(r15Joints) do
+        local joint = character:FindFirstChild(jointName)
+        if joint then
+            joint:Destroy()
+        end
+    end
+end
+
+-- 创建R6身体部位
+local function createR6Part(name, config, character)
+    local part = Instance.new("Part")
+    part.Name = name
+    part.Size = config.Size
+    part.Anchored = false
+    part.CanCollide = true
+    part.BrickColor = BrickColor.new("Medium stone grey")
+    part.Material = Enum.Material.Plastic
+    
+    -- 设置位置
+    local torso = character:FindFirstChild("Torso")
+    if torso then
+        part.CFrame = torso.CFrame * config.Offset
+    else
+        part.CFrame = CFrame.new(0, 10, 0) * config.Offset
+    end
+    
+    -- 头部特殊处理
+    if name == "Head" then
+        local mesh = Instance.new("SpecialMesh")
+        mesh.MeshId = config.MeshId
+        mesh.Scale = Vector3.new(1.25, 1.25, 1.25)
+        mesh.Parent = part
+        
+        local face = Instance.new("Decal")
+        face.Name = "face"
+        face.Face = Enum.NormalId.Front
+        face.Texture = "rbxasset://textures/face.png"
+        face.Parent = part
+    end
+    
+    part.Parent = character
+    return part
+end
+
+-- 创建R6关节
+local function createR6Joint(name, config, parts)
+    local weld = Instance.new("Motor6D")
+    weld.Name = name
+    weld.Part0 = parts[config.Part0]
+    weld.Part1 = parts[config.Part1]
+    weld.C0 = config.C0
+    weld.C1 = config.C1
+    weld.Parent = parts[config.Part0]
+    return weld
+end
+
+-- 设置Humanoid为R6
+local function setupHumanoid(character)
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        humanoid.RigType = Enum.HumanoidRigType.R6
+        
+        -- 设置R6比例
+        humanoid.BodyHeightScale = 1
+        humanoid.BodyWidthScale = 1
+        humanoid.BodyDepthScale = 1
+        humanoid.HeadScale = 1
+        
+        return humanoid
+    end
+    return nil
+end
+
+-- 创建HumanoidRootPart
+local function createHumanoidRootPart(character, torso)
+    local humanoidRootPart = Instance.new("Part")
+    humanoidRootPart.Name = "HumanoidRootPart"
+    humanoidRootPart.Size = Vector3.new(2, 2, 1)
+    humanoidRootPart.CFrame = torso.CFrame
+    humanoidRootPart.Anchored = false
+    humanoidRootPart.CanCollide = true
+    humanoidRootPart.Transparency = 1  -- 隐藏RootPart
+    humanoidRootPart.Parent = character
+    
+    -- 连接RootPart到Torso
+    local rootJoint = Instance.new("Motor6D")
+    rootJoint.Name = "RootJoint"
+    rootJoint.Part0 = humanoidRootPart
+    rootJoint.Part1 = torso
+    rootJoint.C0 = CFrame.new(0, 0, 0, -1, 0, 0, 0, 0, 1, 0, 1, 0)
+    rootJoint.C1 = CFrame.new(0, 0, 0, -1, 0, 0, 0, 0, 1, 0, 1, 0)
+    rootJoint.Parent = humanoidRootPart
+    
+    return humanoidRootPart
+end
+
+-- 主转换函数
+local function convertToR6(character)
+    if not character then
+        warn("❌ 没有找到角色")
+        return false
+    end
+    
+    -- 等待Humanoid加载
+    local humanoid = character:WaitForChild("Humanoid")
+    if humanoid.RigType == Enum.HumanoidRigType.R6 then
+        print("ℹ️ 角色已经是R6")
+        return true
+    end
+    
+    print("🔄 开始转换R15到R6...")
+    
+    -- 保存原始位置
+    local originalPosition = Vector3.new(0, 0, 0)
+    local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
+    if humanoidRootPart then
+        originalPosition = humanoidRootPart.Position
+    end
+    
+    -- 移除R15部件
+    removeR15Parts(character)
+    
+    -- 设置Humanoid为R6
+    setupHumanoid(character)
+    
+    -- 创建R6身体部位
+    local parts = {}
+    for partName, config in pairs(R6_PARTS) do
+        parts[partName] = createR6Part(partName, config, character)
+    end
+    
+    -- 创建R6关节
+    for jointName, config in pairs(R6_JOINTS) do
+        createR6Joint(jointName, config, parts)
+    end
+    
+    -- 创建HumanoidRootPart
+    if parts.Torso then
+        createHumanoidRootPart(character, parts.Torso)
+    end
+    
+    -- 恢复位置
+    if humanoidRootPart then
+        humanoidRootPart.Position = originalPosition
+    end
+    
+    print("✅ R15转R6转换完成!")
+    return true
+end
+
+-- 自动转换函数
+local function autoConvert()
+    local character = waitForCharacter(LocalPlayer)
+    local success, err = pcall(function()
+        return convertToR6(character)
+    end)
+    
+    if success then
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "R15转R6",
+            Text = "转换完成!",
+            Duration = 3
+        })
+    else
+        warn("❌ 转换失败: " .. tostring(err))
+    end
+end
+
+-- 创建控制界面
+local function createControlGUI()
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "R15toR6GUI"
+    ScreenGui.Parent = game:GetService("CoreGui")
+    
+    local MainFrame = Instance.new("Frame")
+    MainFrame.Size = UDim2.new(0, 250, 0, 180)
+    MainFrame.Position = UDim2.new(0, 10, 0, 10)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    MainFrame.BorderSizePixel = 0
+    MainFrame.Parent = ScreenGui
+    
+    local UICorner = Instance.new("UICorner")
+    UICorner.CornerRadius = UDim.new(0, 8)
+    UICorner.Parent = MainFrame
+    
+    -- 标题
+    local Title = Instance.new("TextLabel")
+    Title.Size = UDim2.new(1, 0, 0, 40)
+    Title.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    Title.Text = "R15转R6控制器 v" .. getgenv().R15toR6.Version
+    Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Title.TextSize = 14
+    Title.Font = Enum.Font.GothamBold
+    Title.Parent = MainFrame
+    
+    local TitleCorner = Instance.new("UICorner")
+    TitleCorner.CornerRadius = UDim.new(0, 8)
+    TitleCorner.Parent = Title
+    
+    -- 内容区域
+    local Content = Instance.new("Frame")
+    Content.Size = UDim2.new(1, -20, 1, -60)
+    Content.Position = UDim2.new(0, 10, 0, 50)
+    Content.BackgroundTransparency = 1
+    Content.Parent = MainFrame
+    
+    local UIListLayout = Instance.new("UIListLayout")
+    UIListLayout.Padding = UDim.new(0, 8)
+    UIListLayout.Parent = Content
+    
+    -- 立即转换按钮
+    local ConvertButton = Instance.new("TextButton")
+    ConvertButton.Size = UDim2.new(1, 0, 0, 35)
+    ConvertButton.BackgroundColor3 = Color3.fromRGB(65, 105, 225)
+    ConvertButton.Text = "立即转换"
+    ConvertButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    ConvertButton.TextSize = 14
+    ConvertButton.Font = Enum.Font.Gotham
+    ConvertButton.Parent = Content
+    
+    local ConvertCorner = Instance.new("UICorner")
+    ConvertCorner.CornerRadius = UDim.new(0, 6)
+    ConvertCorner.Parent = ConvertButton
+    
+    -- 自动转换开关
+    local AutoToggleFrame = Instance.new("Frame")
+    AutoToggleFrame.Size = UDim2.new(1, 0, 0, 25)
+    AutoToggleFrame.BackgroundTransparency = 1
+    AutoToggleFrame.Parent = Content
+    
+    local AutoLabel = Instance.new("TextLabel")
+    AutoLabel.Size = UDim2.new(0, 150, 1, 0)
+    AutoLabel.BackgroundTransparency = 1
+    AutoLabel.Text = "自动转换"
+    AutoLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    AutoLabel.TextSize = 12
+    AutoLabel.Font = Enum.Font.Gotham
+    AutoLabel.TextXAlignment = Enum.TextXAlignment.Left
+    AutoLabel.Parent = AutoToggleFrame
+    
+    local AutoToggle = Instance.new("TextButton")
+    AutoToggle.Size = UDim2.new(0, 40, 0, 20)
+    AutoToggle.Position = UDim2.new(1, -40, 0, 2)
+    AutoToggle.Backg
