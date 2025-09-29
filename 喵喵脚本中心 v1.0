@@ -1,0 +1,301 @@
+-- 喵喵注入窗口 v1.0
+
+getgenv().MiaoWindow = {
+    Version = "1.0",
+    Open = false
+}
+
+-- 等待游戏加载
+if not game:IsLoaded() then
+    game.Loaded:Wait()
+end
+
+-- 创建主窗口函数
+function CreateMiaoWindow()
+    if getgenv().MiaoWindow.Open then
+        return warn("🐱 喵喵窗口已经打开!")
+    end
+    
+    getgenv().MiaoWindow.Open = true
+    
+    -- 创建核心GUI
+    local CoreGui = game:GetService("CoreGui")
+    local TweenService = game:GetService("TweenService")
+    local UserInputService = game:GetService("UserInputService")
+    
+    -- 主屏幕GUI
+    local MiaoGui = Instance.new("ScreenGui")
+    MiaoGui.Name = "MiaoMiaoWindow"
+    MiaoGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    MiaoGui.Parent = CoreGui
+    
+    -- 主窗口框架
+    local MainFrame = Instance.new("Frame")
+    MainFrame.Name = "MainFrame"
+    MainFrame.Size = UDim2.new(0, 450, 0, 500)
+    MainFrame.Position = UDim2.new(0.5, -225, 0.5, -250)
+    MainFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    MainFrame.BorderSizePixel = 0
+    MainFrame.ClipsDescendants = true
+    MainFrame.Parent = MiaoGui
+    
+    -- 圆角
+    local UICorner = Instance.new("UICorner")
+    UICorner.CornerRadius = UDim.new(0, 8)
+    UICorner.Parent = MainFrame
+    
+    -- 阴影
+    local DropShadow = Instance.new("ImageLabel")
+    DropShadow.Name = "DropShadow"
+    DropShadow.ZIndex = 0
+    DropShadow.BackgroundTransparency = 1
+    DropShadow.Position = UDim2.new(0, -15, 0, -15)
+    DropShadow.Size = UDim2.new(1, 30, 1, 30)
+    DropShadow.Image = "rbxassetid://6014261993"
+    DropShadow.ScaleType = Enum.ScaleType.Slice
+    DropShadow.SliceCenter = Rect.new(49, 49, 450, 450)
+    DropShadow.Parent = MainFrame
+    
+    -- 标题栏
+    local TitleBar = Instance.new("Frame")
+    TitleBar.Name = "TitleBar"
+    TitleBar.Size = UDim2.new(1, 0, 0, 40)
+    TitleBar.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+    TitleBar.BorderSizePixel = 0
+    TitleBar.Parent = MainFrame
+    
+    local TitleCorner = Instance.new("UICorner")
+    TitleCorner.CornerRadius = UDim.new(0, 8)
+    TitleCorner.Parent = TitleBar
+    
+    -- 标题文字
+    local TitleLabel = Instance.new("TextLabel")
+    TitleLabel.Name = "TitleLabel"
+    TitleLabel.Size = UDim2.new(0, 200, 1, 0)
+    TitleLabel.Position = UDim2.new(0, 15, 0, 0)
+    TitleLabel.BackgroundTransparency = 1
+    TitleLabel.Text = "🐱 喵喵脚本中心 v1.0"
+    TitleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    TitleLabel.TextSize = 16
+    TitleLabel.Font = Enum.Font.GothamBold
+    TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
+    TitleLabel.Parent = TitleBar
+    
+    -- 关闭按钮
+    local CloseButton = Instance.new("TextButton")
+    CloseButton.Name = "CloseButton"
+    CloseButton.Size = UDim2.new(0, 30, 0, 30)
+    CloseButton.Position = UDim2.new(1, -35, 0, 5)
+    CloseButton.BackgroundColor3 = Color3.fromRGB(255, 60, 60)
+    CloseButton.Text = "×"
+    CloseButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    CloseButton.TextSize = 20
+    CloseButton.Font = Enum.Font.GothamBold
+    CloseButton.Parent = TitleBar
+    
+    local CloseCorner = Instance.new("UICorner")
+    CloseCorner.CornerRadius = UDim.new(0, 6)
+    CloseCorner.Parent = CloseButton
+    
+    -- 标签页容器
+    local TabContainer = Instance.new("Frame")
+    TabContainer.Name = "TabContainer"
+    TabContainer.Size = UDim2.new(1, -20, 0, 30)
+    TabContainer.Position = UDim2.new(0, 10, 0, 50)
+    TabContainer.BackgroundTransparency = 1
+    TabContainer.Parent = MainFrame
+    
+    -- 内容容器
+    local ContentContainer = Instance.new("Frame")
+    ContentContainer.Name = "ContentContainer"
+    ContentContainer.Size = UDim2.new(1, -20, 1, -90)
+    ContentContainer.Position = UDim2.new(0, 10, 0, 90)
+    ContentContainer.BackgroundTransparency = 1
+    ContentContainer.Parent = MainFrame
+    
+    -- 创建标签页系统
+    local Tabs = {}
+    local CurrentTab = nil
+    
+    -- 创建标签页函数
+    function CreateTab(tabName)
+        local TabButton = Instance.new("TextButton")
+        TabButton.Name = tabName .. "Tab"
+        TabButton.Size = UDim2.new(0, 80, 1, 0)
+        TabButton.Position = UDim2.new(0, (#Tabs * 85), 0, 0)
+        TabButton.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+        TabButton.Text = tabName
+        TabButton.TextColor3 = Color3.fromRGB(200, 200, 200)
+        TabButton.TextSize = 14
+        TabButton.Font = Enum.Font.Gotham
+        TabButton.Parent = TabContainer
+        
+        local TabCorner = Instance.new("UICorner")
+        TabCorner.CornerRadius = UDim.new(0, 6)
+        TabCorner.Parent = TabButton
+        
+        local TabContent = Instance.new("ScrollingFrame")
+        TabContent.Name = tabName .. "Content"
+        TabContent.Size = UDim2.new(1, 0, 1, 0)
+        TabContent.Position = UDim2.new(0, 0, 0, 0)
+        TabContent.BackgroundTransparency = 1
+        TabContent.ScrollBarThickness = 3
+        TabContent.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 100)
+        TabContent.Visible = false
+        TabContent.Parent = ContentContainer
+        
+        local UIListLayout = Instance.new("UIListLayout")
+        UIListLayout.Padding = UDim.new(0, 10)
+        UIListLayout.Parent = TabContent
+        
+        local tab = {
+            Button = TabButton,
+            Content = TabContent,
+            Name = tabName
+        }
+        
+        table.insert(Tabs, tab)
+        
+        -- 标签点击事件
+        TabButton.MouseButton1Click:Connect(function()
+            SwitchTab(tab)
+        end)
+        
+        if #Tabs == 1 then
+            SwitchTab(tab)
+        end
+        
+        return tab
+    end
+    
+    -- 切换标签页函数
+    function SwitchTab(tab)
+        if CurrentTab then
+            CurrentTab.Button.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+            CurrentTab.Content.Visible = false
+        end
+        
+        CurrentTab = tab
+        tab.Button.BackgroundColor3 = Color3.fromRGB(65, 105, 225)
+        tab.Content.Visible = true
+    end
+    
+    -- 创建按钮函数
+    function CreateButton(tab, text, callback)
+        local Button = Instance.new("TextButton")
+        Button.Name = text .. "Button"
+        Button.Size = UDim2.new(1, 0, 0, 40)
+        Button.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+        Button.Text = text
+        Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+        Button.TextSize = 14
+        Button.Font = Enum.Font.Gotham
+        Button.Parent = tab.Content
+        
+        local ButtonCorner = Instance.new("UICorner")
+        ButtonCorner.CornerRadius = UDim.new(0, 6)
+        ButtonCorner.Parent = Button
+        
+        Button.MouseButton1Click:Connect(callback)
+        
+        return Button
+    end
+    
+    -- 创建开关函数
+    function CreateToggle(tab, text, default, callback)
+        local ToggleFrame = Instance.new("Frame")
+        ToggleFrame.Name = text .. "Toggle"
+        ToggleFrame.Size = UDim2.new(1, 0, 0, 30)
+        ToggleFrame.BackgroundTransparency = 1
+        ToggleFrame.Parent = tab.Content
+        
+        local ToggleLabel = Instance.new("TextLabel")
+        ToggleLabel.Name = "Label"
+        ToggleLabel.Size = UDim2.new(0, 200, 1, 0)
+        ToggleLabel.BackgroundTransparency = 1
+        ToggleLabel.Text = text
+        ToggleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        ToggleLabel.TextSize = 14
+        ToggleLabel.Font = Enum.Font.Gotham
+        ToggleLabel.TextXAlignment = Enum.TextXAlignment.Left
+        ToggleLabel.Parent = ToggleFrame
+        
+        local ToggleButton = Instance.new("TextButton")
+        ToggleButton.Name = "Toggle"
+        ToggleButton.Size = UDim2.new(0, 40, 0, 20)
+        ToggleButton.Position = UDim2.new(1, -40, 0, 5)
+        ToggleButton.BackgroundColor3 = default and Color3.fromRGB(65, 105, 225) or Color3.fromRGB(80, 80, 80)
+        ToggleButton.Text = ""
+        ToggleButton.Parent = ToggleFrame
+        
+        local ToggleCorner = Instance.new("UICorner")
+        ToggleCorner.CornerRadius = UDim.new(0, 10)
+        ToggleCorner.Parent = ToggleButton
+        
+        local state = default
+        
+        ToggleButton.MouseButton1Click:Connect(function()
+            state = not state
+            ToggleButton.BackgroundColor3 = state and Color3.fromRGB(65, 105, 225) or Color3.fromRGB(80, 80, 80)
+            callback(state)
+        end)
+        
+        return ToggleFrame
+    end
+    
+    -- 创建标签函数
+    function CreateLabel(tab, text)
+        local Label = Instance.new("TextLabel")
+        Label.Name = text .. "Label"
+        Label.Size = UDim2.new(1, 0, 0, 20)
+        Label.BackgroundTransparency = 1
+        Label.Text = text
+        Label.TextColor3 = Color3.fromRGB(200, 200, 200)
+        Label.TextSize = 14
+        Label.Font = Enum.Font.Gotham
+        Label.TextXAlignment = Enum.TextXAlignment.Left
+        Label.Parent = tab.Content
+        
+        return Label
+    end
+    
+    -- 创建标签页
+    local MainTab = CreateTab("主要功能")
+    local PlayerTab = CreateTab("玩家选项")
+    local SettingsTab = CreateTab("设置")
+    local InfoTab = CreateTab("信息")
+    
+    -- 主要功能标签内容
+    CreateLabel(MainTab, "自动农场功能:")
+    CreateToggle(MainTab, "开启自动农场", false, function(state)
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "喵喵脚本",
+            Text = "自动农场: " .. (state and "开启" or "关闭"),
+            Duration = 2
+        })
+    end)
+    
+    CreateButton(MainTab, "开始自动农场", function()
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "喵喵脚本",
+            Text = "开始自动农场...",
+            Duration = 3
+        })
+    end)
+    
+    CreateButton(MainTab, "停止所有功能", function()
+        game:GetService("StarterGui"):SetCore("SendNotification", {
+            Title = "喵喵脚本",
+            Text = "所有功能已停止",
+            Duration = 3
+        })
+    end)
+    
+    -- 玩家选项标签内容
+    CreateLabel(PlayerTab, "角色设置:")
+    CreateToggle(PlayerTab, "无限跳跃", false, function(state)
+        local player = game.Players.LocalPlayer
+        if state then
+            getgenv().InfiniteJump = true
+            game:GetService("UserInputService").JumpRequest:Connect(function()
+                if getgenv().InfiniteJump
